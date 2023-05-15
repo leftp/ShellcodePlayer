@@ -1,0 +1,14 @@
+%SystemRoot%\\system32\\hnetcfg.dll
+%WINDIR%\\System32\\ahlhcib.dll
+%WINDIR%\\sjyntmv.dat
+Global\\{8c38e4f3-591f-91cf-06a6-67b84d8a0102}
+%WINDIR%\\System32\\owrwbsdi
+Chrome
+StringIndex
+itemagic.net@443
+team4heat.net@443
+62.216.152.69@443
+84.233.205.37@443
+www.microsoft.com@80
+www.google.com@80
+127.0.0.1:3128

@@ -1,0 +1,5 @@
+%11%\\scrobj.dll,NI,c:
+AppAct = \"SOFTWARE\\Microsoft\\Connection Manager\
+[DefenderService]
+UnRegisterOCXs=EventManager
+ShortSvcName=

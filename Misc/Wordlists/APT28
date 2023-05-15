@@ -1,0 +1,11 @@
+jhuhugit.tmp
+KERNEL32.dll
+IsDebuggerPresent
+IsProcessorFeaturePresent
+TerminateProcess
+DeleteFileA
+GetProcessHeap
+coreshell.dll
+Core Shell Runtime Service
+\\chkdbg.log
+Applicate
