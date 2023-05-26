@@ -8,8 +8,7 @@ HANDLE ProcessCreate(char * processName) {
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(si);
 	ZeroMemory(&pi, sizeof(pi));
-
-	if (!CreateProcess(NULL, processName, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+	if (!CreateProcessA(NULL, processName, NULL, NULL, FALSE, CREATE_SUSPENDED, NULL, NULL, &si, &pi)) {
 		#ifdef DEBUG
 			printf("[-] CreateProcess failed (%d)\n", GetLastError());
 		#endif

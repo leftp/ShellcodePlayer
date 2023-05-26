@@ -1,4 +1,4 @@
-// Description: Copy decoded shellcode to memoty of foregn process using VirtualAllocEx API
+// Description: Copy decoded shellcode to RW mem in remote process using VirtualAllocEx API
 // Used WinAPIs: VirtualAllocEx
 // IOCS strings:
 LPVOID AllocMemory(HANDLE process, SIZE_T size) {

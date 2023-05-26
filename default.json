@@ -1,0 +1,28 @@
+{
+    "help": false,
+    "arch": "x64",
+    "wordlist": [
+        "None"
+    ],
+    "domains": [
+	   "example.local"
+    ],
+    "sign": "testsign",
+    "format": "exe",
+
+    "c2_fast": "/tmp/MsgboxShellcode.x64.bin",
+    "c2_medium": "/tmp/MsgboxShellcode.x64.bin",
+    "c2_slow": "/tmp/MsgboxShellcode.x64.bin",
+
+    "fork_fast": "C:\\\\Windows\\\\hh.exe",
+    "fork_medium": "C:\\\\Windows\\\\hh.exe",
+    "fork_slow": "C:\\\\Windows\\\\hh.exe",
+
+    "control": null,
+    "AllocMemory": "NtAllocateVirtualMemory_Dyn",
+    "ExecuteMemory": "NtCreateThreadEx_Dyn",
+    "ProcessCreate": "CreateProcessA_Dyn",
+    "ProcessOpen": "OpenProcess_Dyn",
+    "ProtectMemory": "NtProtectVirtualMemory_Dyn",
+    "WriteMemory": "NtWriteVirtualMemory_Dyn"
+}

